@@ -1,7 +1,7 @@
 /***********************************************************/
 /* C_FORMULÁRIO - Validador de formulários                 */
 /* Desenvolvido por Marco Meneses (EMES3SOFT)              */
-/* Versão 1.3                                             */
+/* Versão 1.6                                             */
 /***********************************************************/
 if (!window.jQuery) {  
     console.error("A libraria jQuery está em falta.");
@@ -94,10 +94,15 @@ class constantes {
     static get classe_geral_valido() { return "is-valid" };
     static get classe_geral_invalido() { return "is-invalid" };
     static get classe_obj_valido() { return "objeto_valido_c_formulario" };
+    static get classe_obj_valido_cbd() { return "valido" };
     static get classe_obj_invalido() { return "objeto_invalido_c_formulario" };
+    static get classe_obj_invalido_cbd() { return "invalido" };
     static get prefixo_obj_erro() { return "erro_" };
     static get tempo_espera() { return 3500 };
     static get email_regex() { return /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/ };
+    static get passe_regex() { return /^(?!.*\s)(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9])(?=.*[~`!@#$%^&*()--+={}\[\]|\\:;"'<>,.?/_₹]).{10,25}$/ };
+    static get ip_regex() { return /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/ };
+    static get url_regex() { return /(http(s)?:\/\/.)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/g }
     static get nome_ficheiro_json() { return "c_formulario.json" };
 }
 
@@ -138,6 +143,15 @@ class c_formulario {
         this.validacoes.elemento_error = undefined;
     }
 
+    #Verifica_se_IPV4(endereco_ip) {
+        var blocks = endereco_ip.split(".");
+        if(blocks.length === 4) {
+            return blocks.every(function(block) {
+                return parseInt(block,10) >=0 && parseInt(block,10) <= 255;
+            });
+        }
+        return false;
+    }
     // Verifica se existe uma substring dentro de uma string
     #Verifica_String_SubString(str = undefined, substr = undefined) {
         if (str === undefined || substr === undefined)
@@ -239,6 +253,8 @@ class c_formulario {
         }
         
         let valor = this.#ler_ficheiro_c_formulario(variavel_mensagem);
+
+        // console.log(valor);
     
         let info_msg = null;
         for (let i=0; i < valor.length; i++) 
@@ -252,10 +268,10 @@ class c_formulario {
         {
             let tipo_mensagem = this.#ler_ficheiro_c_formulario("tipos_mensagens",info_msg[1]);
         
-            b5toast.show(tipo_mensagem[2],tipo_mensagem[3] + info_msg[2] + ": " + info_msg[3], com_titulo?tipo_mensagem[1]:'', this.msgs.tempo_de_espera);
+            b5toast.mostrar(tipo_mensagem[2],tipo_mensagem[3] + info_msg[2] + ": " + info_msg[3], com_titulo?tipo_mensagem[1]:'', this.msgs.tempo_de_espera);
         }
         else
-            b5toast.show('danger',"Variavel não encontrada: " + variavel_mensagem, 'ERRO', this.msgs.tempo_de_espera);
+            b5toast.mostrar('danger',"Variavel não encontrada: " + variavel_mensagem, 'ERRO', this.msgs.tempo_de_espera);
     }
 
     // Transforma um id em objeto jQUERY
@@ -296,7 +312,7 @@ class c_formulario {
             this.formulario.vetores = new formulario_objetos([],[],[],[]);
 
             for(let i=0; i < this.formulario.num_elementos; i++) {
-                valor_id = $(this.formulario.elementos[i]).hasAttr("formulario-numobj") ? parseInt($(this.formulario.elementos[i]).attr("formulario-numobj")) : i;
+                valor_id = $(this.formulario.elementos[i]).hasAttr_c_formulario("formulario-numobj") ? parseInt($(this.formulario.elementos[i]).attr("formulario-numobj")) : i;
                 if (this.formulario.elementos[i].id !== "") {
                     let dados=[];
                     if (this.formulario.elementos[i].id.includes("chk"))
@@ -554,15 +570,17 @@ class c_formulario {
                 str_objeto_partes.push(str_objeto.substr(1, str_objeto.length-2));
             }
             else if (str_objeto.includes(limitadores.separador)) {
-                str_objeto_partes.push(str_objeto.split(limitadores.separador)[0].replace(limitadores.inicial,"").replace(limitadores.final,""));
-                str_objeto_partes.push(str_objeto.split(limitadores.separador)[1].replace(limitadores.inicial,"").replace(limitadores.final,"").toLowerCase());
+                let str_separador = str_objeto.indexOf(limitadores.separador)
+                str_objeto_partes.push(str_objeto.substring(0, str_separador).replace(limitadores.inicial,"").replace(limitadores.final,""))
+                str_objeto_partes.push(str_objeto.substring(str_separador + 1, posicoes[1]).replace(limitadores.inicial,"").replace(limitadores.final,"").toLowerCase())
             }
             else{
                 str_objeto_partes.push(str_objeto.replace(limitadores.inicial,"").replace(limitadores.final,""));
             }
 
+            //console.log("TAMANHO DAS PARTES: " + str_objeto_partes.length + "\nPARTE1: " + str_objeto_partes[0] + "\nPARTE2: " + str_objeto_partes[1]);
             let str_objeto_valor = undefined;
-            console.log("TAMANHO DAS PARTES: " + str_objeto_partes.length + "\nPARTE1: " + str_objeto_partes[0] + "\nPARTE2: " + str_objeto_partes[1]);
+
             if (str_objeto_partes.length == 1) {
                 if (str_objeto_partes[0].includes("data_address")) {
                     if (str_objeto_partes[0].indexOf(limitadores.valores_inicial) == -1 || str_objeto_partes[0].indexOf(limitadores.valores_final) == -1) {
@@ -580,9 +598,9 @@ class c_formulario {
                             else if (str_objeto_valor[1] == undefined || typeof str_objeto_valor[1] !== "string") {
                                 str_objeto_valor = `ERRO AO AVALIAR A PROPRIEDADE DATA_ADDRESS: Valor de DATA inválida (${str_objeto_valor[1]})`;
                             }
-                            else {
+                            else {                                
                                 let valor_devolvido = this.#Pedido_Valores(str_objeto_valor[0], str_objeto_valor[1]);
-                                alert(`VALOR 0: ${str_objeto_valor[0]} \nVALOR 1: ${str_objeto_valor[1]} \nVALOR DEVOLVIDO: ${valor_devolvido}`);
+
                                 str_objeto_valor = ($.isNumeric(valor_devolvido)) ? parseInt(valor_devolvido) : valor_devolvido;
                             }
                         }
@@ -614,11 +632,18 @@ class c_formulario {
                 }
             }
             else {
-                if (str_objeto_partes[1] == "val" || str_objeto_partes[1] == "value")
+                if (str_objeto_partes[1] == "passe" || str_objeto_partes[1] == "complexity") {
+                    str_objeto_valor = constantes.passe_regex.test($("#" + str_objeto_partes[0]).val());
+                }
+                else if (str_objeto_partes[1] == "val" || str_objeto_partes[1] == "value")
                     str_objeto_valor = $("#" + str_objeto_partes[0]).val();
                 else if (str_objeto_partes[1] == "valemail" || str_objeto_partes[1] == "email"){
                     str_objeto_valor = constantes.email_regex.test($("#" + str_objeto_partes[0]).val());
                 }
+                else if (str_objeto_partes[1] == "valurl" || str_objeto_partes[1] == "url")
+                    str_objeto_valor = constantes.url_regex.test($("#" + str_objeto_partes[0]).val());
+                    else if (str_objeto_partes[1] == "valip" || str_objeto_partes[1] == "ip")
+                    str_objeto_valor = constantes.ip_regex.test($("#" + str_objeto_partes[0]).val());
                 else if (str_objeto_partes[1] == "check" || str_objeto_partes[1] == "checked")
                     str_objeto_valor = $("#" + str_objeto_partes[0]).is(":checked");
                 else if (str_objeto_partes[1] == "length" || str_objeto_partes[1] == "len") {
@@ -642,7 +667,7 @@ class c_formulario {
                 else if (str_objeto_partes[1].includes("indexof")) {
                     if (str_objeto_partes[1].includes(limitadores.includes_inicial) && str_objeto_partes[1].includes(limitadores.includes_final)){
                         str_objeto_valor = this.#Devolve_texto_entre_limitadores(str_objeto_partes[1],limitadores.includes_inicial,limitadores.includes_final);
-                        str_objeto_valor =  $("#" + str_objeto_partes[0]).val().indexOf(str_objeto_valor);
+                        str_objeto_valor =  $("#" + str_objeto_partes[0]).val().indexOf(str_objeto_valor) > -1
                     }
                     else 
                         str_objeto_valor = "ERRO AO AVALIAR A PROPRIEDADE INDEXOF"
@@ -654,7 +679,7 @@ class c_formulario {
             if (str_objeto_valor!=undefined && (typeof str_objeto_valor).toLowerCase() === 'string')
                 str_objeto_valor = `"${str_objeto_valor}"`
 
-            console.log(`STR_OBJETO: ${str_objeto}\nSTR_OBJECTO_VALOR: ${str_objeto_valor}`)
+            // console.log(`STR_OBJETO: ${str_objeto}\nSTR_OBJECTO_VALOR: ${str_objeto_valor}`)
             txtstr = txtstr.replace(str_objeto, str_objeto_valor);
         }
 
@@ -715,6 +740,7 @@ class c_formulario {
         switch (this.tipo_aviso) {
             case tipos_aviso.aviso_tooltip:
                 $(objeto).attr('data-bs-toggle','tooltip_c_formulario');
+                if ($("#" + this.formulario).hasClass('cbd'))
                 break;
             case tipos_aviso.aviso_texto:
                 let ultimo_objeto_div = $(objeto).closest("div");
@@ -737,8 +763,8 @@ class c_formulario {
         }
 
         if (!valor_erro) {
-            $(objeto).removeClass(classe_erro);
-            $(objeto).addClass(classe_valido);
+            $(objeto).removeClass(classe_erro + " " + constantes.classe_obj_invalido_cbd);
+            $(objeto).addClass(classe_valido + " " + constantes.classe_obj_valido_cbd);
 
             switch (this.tipo_aviso) {
                 case tipos_aviso.aviso_tooltip:
@@ -754,8 +780,8 @@ class c_formulario {
         }
         else {
             if ($(".toast").length == 0) this.#mostra_mensagem_c_formulario("formulario",0);
-            $(objeto).removeClass(classe_valido);
-            $(objeto).addClass(classe_erro);
+            $(objeto).removeClass(classe_valido + " " + constantes.classe_obj_valido_cbd);
+            $(objeto).addClass(classe_erro + " " + constantes.classe_obj_invalido_cbd);
 
             switch (this.tipo_aviso) {
                 case tipos_aviso.aviso_tooltip:
@@ -795,6 +821,7 @@ class c_formulario {
 
             // comparações
             let txtcomparacao = this.#Texto_Final(this.validacoes[i].comparacao);
+            // console.warn(txtcomparacao)
             if (txtcomparacao == "") {
                 console.log("TESTA_VALIDACOES: (" + this.validacoes[i].id + ") - Expressão de comparação vazia: " + txtcomparacao);
                 continue;
